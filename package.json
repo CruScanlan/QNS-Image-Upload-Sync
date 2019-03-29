@@ -1,0 +1,27 @@
+{
+  "name": "qns-image-upload-sync",
+  "version": "1.0.0",
+  "description": "Sync and watermark images to contentful",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "set NODE_ENV=development&& node ./src",
+    "dev:watch": "nodemon --exec npm run dev",
+    "run": "set NODE_ENV=production&& node ./src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cruzercru/QNS-Image-Upload-Sync.git"
+  },
+  "author": "Cru Scanlan",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Cruzercru/QNS-Image-Upload-Sync/issues"
+  },
+  "homepage": "https://github.com/Cruzercru/QNS-Image-Upload-Sync#readme",
+  "dependencies": {
+    "app-module-path": "^2.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "latest"
+  }
+}

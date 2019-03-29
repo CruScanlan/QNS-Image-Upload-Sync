@@ -59,3 +59,8 @@ typings/
 
 # next.js build output
 .next
+
+#config files
+src/config/base-config.js
+src/config/dev-config.js
+src/config/prod-config.js
