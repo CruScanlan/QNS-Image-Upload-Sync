@@ -4,9 +4,18 @@
   "description": "Sync and watermark images to contentful",
   "main": "src/index.js",
   "scripts": {
-    "dev": "set NODE_ENV=development&& node ./src",
+    "test": "mocha",
+    "dev": "cross-env NODE_ENV=development node ./src",
     "dev:watch": "nodemon --exec npm run dev",
-    "run": "set NODE_ENV=production&& node ./src"
+    "dev:memory": "cross-env NODE_ENV=development memory-usage ./src",
+    "debug": "cross-env NODE_ENV=development node --no-lazy --inspect-brk=5858 ./src",
+    "run": "cross-env NODE_ENV=production node ./src"
+  },
+  "nodemonConfig": {
+    "ignore": [
+      "./src/data",
+      "./src/tests"
+    ]
   },
   "repository": {
     "type": "git",
@@ -19,9 +28,18 @@
   },
   "homepage": "https://github.com/Cruzercru/QNS-Image-Upload-Sync#readme",
   "dependencies": {
-    "app-module-path": "^2.2.0"
+    "app-module-path": "^2.2.0",
+    "contentful-management": "^5.7.0",
+    "cross-env": "^5.2.0",
+    "lowdb": "^1.0.0",
+    "node-watch": "^0.6.0",
+    "piexifjs": "^1.0.4",
+    "request": "^2.88.0"
   },
   "devDependencies": {
-    "nodemon": "latest"
+    "chai": "^4.2.0",
+    "mocha": "^6.0.2",
+    "nodemon": "latest",
+    "memory-usage": "^1.2.1"
   }
 }

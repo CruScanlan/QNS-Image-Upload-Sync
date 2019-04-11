@@ -60,7 +60,17 @@ typings/
 # next.js build output
 .next
 
+#editor
+.vscode
+
 #config files
 src/config/base-config.js
 src/config/dev-config.js
 src/config/prod-config.js
+src/config/test-config.js
+
+#data
+src/data
+
+#extra
+rename.js
