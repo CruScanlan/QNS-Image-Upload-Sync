@@ -54,7 +54,6 @@ class Contentful {
         /* await this.uploadNewAsset({
             title: 'ayy',
             description: 'test description',
-            fileType: 'image/jpg',
             fileName: '$Acacia amblygona inflorescence, phyllodes, fruit, Curra SF July 2018.jpg',
             relativePath: `/Acacia amblygona/$Acacia amblygona inflorescence, phyllodes, fruit, Curra SF July 2018.jpg`
         }) */
@@ -94,7 +93,6 @@ class Contentful {
      * Creates a contentful asset
      * @param {object} assetInfo 
      * @param {string} assetInfo.title - The title for the contentful image
-     * @param {string} assetInfo.fileType - The file type for the image
      * @param {string} assetInfo.fileName - The file name of the image
      */
     async createAsset(assetInfo) {
@@ -108,7 +106,7 @@ class Contentful {
               },
               file: {
                 'en-US': {
-                  contentType: assetInfo.fileType,
+                  contentType: 'image/jpg',
                   fileName: assetInfo.fileName
                 }
               }

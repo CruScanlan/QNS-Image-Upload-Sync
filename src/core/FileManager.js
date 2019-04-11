@@ -30,7 +30,7 @@ class FileManager extends EventEmitter{
             watch(this.app.config.assetDirectory, {
                 persistent: true, 
                 recursive: true,
-                filter: name => name.endsWith('.jpg') || name.endsWith('.png')
+                filter: name => name.endsWith('.jpg')
             }, async (event, file) => {
                 file = file.split('\\').join('/');
     
@@ -84,7 +84,7 @@ class FileManager extends EventEmitter{
             const item = data[i];
             if(images.length > 4) continue;
             if(item.indexOf('.') !== -1) {
-                if((item.endsWith('.jpg') || item.endsWith('.png')) && item.startsWith('$')) {
+                if(item.endsWith('.jpg') && item.startsWith('$')) {
                     const imageInfo = {
                         path: `${searchPath}/${item}`,
                         relativePath: `${relativePath}/${item}`,
@@ -93,8 +93,7 @@ class FileManager extends EventEmitter{
                     //Use object assign to copy variables and allow the image data to be garbage collected
                     const image = await Image.build(Object.assign({}, imageInfo));
                     images.push(Object.assign({}, imageInfo, {
-                        contentfulImageId: image._contentfulImageId, 
-                        fileType: item.endsWith('.jpg') ? 'image/jpg' : 'image/png'
+                        contentfulImageId: image._contentfulImageId
                     }));
                 }
                 continue;
