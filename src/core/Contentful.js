@@ -1,8 +1,6 @@
 const contentful = require('contentful-management');
-const fs = require('fs');
 const path = require('path');
 const request = require('request');
-const PassThrough = require('stream').PassThrough;
 const Image = require('models/Image');
 
 class Contentful {
@@ -67,26 +65,55 @@ class Contentful {
     }
 
     /**
-     * Upload and create a new asset
+     * Create, upload and watermark a new asset
      * @param {object} assetInfo 
      * @param {string} assetInfo.title - The title for the contentful image
-     * @param {string} assetInfo.fileType - The file type for the image
      * @param {string} assetInfo.fileName - The file name of the image
      * @param {string} assetInfo.relativePath - The path relative to the image directory for the image
      */
-    async uploadNewAsset(assetInfo) {
-        const asset = await this.createAsset({
-            title: assetInfo.title,
-            description: assetInfo.description,
-            fileType: assetInfo.fileType,
-            fileName: assetInfo.fileName
-        });
-        await this.uploadAssetImage({
-            fileName: assetInfo.fileName,
-            assetId: asset.sys.id,
-            relativePath: assetInfo.relativePath
+    async uploadWatermarkNewAsset(assetInfo) {
+        return new Promise(async (resolve) => {
+            const fullPath = path.join(this.app.config.assetDirectory, assetInfo.relativePath);
+
+            const asset = await this.createAsset({
+                title: assetInfo.title,
+                description: assetInfo.description,
+                fileName: assetInfo.fileName
+            });
+    
+            const watermarkedImageInfo = await this.app.watermarker.watermarkImage({
+                fileName: assetInfo.fileName,
+                path: fullPath,
+                relativePath: assetInfo.relativePath
+            });
+    
+            const originalImage = await Image.build({
+                path: fullPath,
+                relativePath: assetInfo.relativePath,
+                fileName: assetInfo.fileName,
+                data: watermarkedImageInfo.originalImageData
+            });
+    
+            const watermarkedImage = await Image.build({
+                path: watermarkedImageInfo.path,
+                relativePath: watermarkedImageInfo.relativePath,
+                fileName: watermarkedImageInfo.fileName,
+                data: watermarkedImageInfo.watermarkedImageData
+            });
+
+            await Promise.all([
+                originalImage.setContentfulImageId(asset.sys.id),
+                watermarkedImage.setContentfulImageId(asset.sys.id),
+                this.uploadAssetImage({
+                    fileName: watermarkedImageInfo.fileName,
+                    assetId: asset.sys.id,
+                    relativePath: watermarkedImageInfo.relativePath,
+                    data: watermarkedImageInfo.watermarkedImageData
+                })
+            ]);
+    
+            return resolve();
         })
-        return;
     }
 
     /**
@@ -124,7 +151,7 @@ class Contentful {
     async uploadAssetImage(imageInfo) {
         return new Promise(async (resolve, reject) => {
             try {
-                const upload = await this.uploadImage(imageInfo);
+                const upload = await this.uploadImageWatermarked(imageInfo);
                 const asset = await this.environment.getAsset(imageInfo.assetId);
                 asset.fields.file['en-US'].uploadFrom = {
                     sys: {
@@ -134,7 +161,7 @@ class Contentful {
                     }
                 }
                 await asset.update();
-                await asset.processForLocale('en-US', { processingCheckWait: 2000 });
+                await asset.processForLocale('en-US', { processingCheckWait: 2000});
             } catch(e) {
                 return reject(e);
             }
@@ -143,50 +170,25 @@ class Contentful {
     }
 
     /**
-     * Uploads an image to contentful
+     * Uploads a watermarked image to contentful
      * @param {string} imageInfo.fileName - The file name of the image
      * @param {string} imageInfo.assetId - The id of the asset the image is for
      * @param {string} imageInfo.relativePath - The path relative to the image directory for the image
+     * @param {string} imageInfo.data - The image data
      */
-    async uploadImage(imageInfo) {
+    async uploadImageWatermarked(imageInfo) {
         return new Promise((resolve, reject) => {
-            let imageDataBufs = [];
-            const fullPath = path.join(this.app.config.assetDirectory, imageInfo.relativePath);
-
-            const fsStream = fs.createReadStream(fullPath);
-
-            let uploadData = {};
-            let imageIdUpdated = false;
-
-            const contentfulStream = request.post({
+            request.post({
                 url: `https://upload.contentful.com/spaces/${this.app.config.contentfulSpaceId}/uploads`,
+                body: imageInfo.data,
                 headers: {
                     "Content-Type": "application/octet-stream",
                     "Authorization": `Bearer ${this.app.config.contentfulAccessToken}`
                 }
             }, (err, resp, body) => {
-                console.log(body)
                 if(err) return reject(err);
-                uploadData = JSON.parse(body);
-                return resolve(uploadData);
+                return resolve(JSON.parse(body));
             });
-
-            const imageStream = new PassThrough();
-            fsStream.pipe(contentfulStream);
-            fsStream.pipe(imageStream);
-
-            imageStream.on('data', (chunk) => {
-                imageDataBufs.push(chunk);
-            }).on('end', async () => {
-                const image = await new Image(Object.assign({}, {
-                    path: fullPath,
-                    relativePath: imageInfo.relativePath,
-                    fileName: imageInfo.fileName,
-                    data: Buffer.concat(imageDataBufs).toString('binary')
-                }));
-                await image.setContentfulImageId(imageInfo.assetId);
-            });
-
         })
     }
 }

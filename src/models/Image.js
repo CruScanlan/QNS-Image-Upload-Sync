@@ -27,11 +27,13 @@ class Image {
          */
         this.relativePath = imageInfo.relativePath;
 
+        console.log(this.fileName, imageInfo.data)
+
         /**
          * The image data for an image in string form
          * @type {string}
          */
-        this._data = imageInfo.data;
+        this._data = imageInfo.data.toString('binary');
 
         /**
          * The exif meta data for an image
@@ -43,7 +45,7 @@ class Image {
          * The contentful image id for an image
          * @type {string}
          */
-        this._contentfulImageId = this._getContentfulImageIdFromExif(); 
+        this._contentfulImageId = this._getContentfulImageIdFromExif();
     }
 
     /**
@@ -52,8 +54,10 @@ class Image {
      * @return {Image}
      */
     static async build(imageInfo) {
-        if(!imageInfo.data) imageInfo.data = await this.getImageDataFromDisk(imageInfo.path);
-        return new Image(imageInfo);
+        return new Promise(async (resolve) => {
+            if(!imageInfo.data) imageInfo.data = await this.getImageDataFromDisk(imageInfo.path);
+            resolve(new Image(imageInfo));
+        })
     }
     
     /**
@@ -65,7 +69,7 @@ class Image {
         return new Promise((resolve, reject) => {
             fs.readFile(path, (err, data) => {
                 if(err) throw err; //TODO: log error properly
-                resolve(data.toString('binary'));
+                resolve(data);
             });
         });
     }

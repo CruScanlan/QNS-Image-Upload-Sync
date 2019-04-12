@@ -39,7 +39,7 @@ class FileManager extends EventEmitter{
                     relativePath: file.substring(this.app.config.assetDirectory.length, file.length),
                     fileName: file.substring(file.lastIndexOf('/')+1, file.length)
                 }
-    
+                return;
                 const image = await Image.build(Object.assign({}, imageInfo));
                 const eventType = event === 'update' ? 'fileUpdate' : 'fileDelete';
     
@@ -98,6 +98,7 @@ class FileManager extends EventEmitter{
                 }
                 continue;
             }
+            if(relativePath === '' && item === 'watermarked') continue;
             images.push(...await this.getImageFileList(`${searchPath}/${item}`, `${relativePath}/${item}`));
         }
         return images;
