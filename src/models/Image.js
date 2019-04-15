@@ -27,8 +27,6 @@ class Image {
          */
         this.relativePath = imageInfo.relativePath;
 
-        console.log(this.fileName, imageInfo.data)
-
         /**
          * The image data for an image in string form
          * @type {string}

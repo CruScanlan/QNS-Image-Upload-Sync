@@ -75,18 +75,19 @@ class Contentful {
         return new Promise(async (resolve) => {
             const fullPath = path.join(this.app.config.assetDirectory, assetInfo.relativePath);
 
-            const asset = await this.createAsset({
-                title: assetInfo.title,
-                description: assetInfo.description,
-                fileName: assetInfo.fileName
-            });
-    
-            const watermarkedImageInfo = await this.app.watermarker.watermarkImage({
-                fileName: assetInfo.fileName,
-                path: fullPath,
-                relativePath: assetInfo.relativePath
-            });
-    
+            const [asset, watermarkedImageInfo] = await Promise.all([
+                this.createAsset({
+                    title: assetInfo.title,
+                    description: assetInfo.description,
+                    fileName: assetInfo.fileName
+                }),
+                this.app.watermarker.watermarkImage({
+                    fileName: assetInfo.fileName,
+                    path: fullPath,
+                    relativePath: assetInfo.relativePath
+                })
+            ])
+
             const originalImage = await Image.build({
                 path: fullPath,
                 relativePath: assetInfo.relativePath,
