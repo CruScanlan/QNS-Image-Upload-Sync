@@ -41,7 +41,7 @@ class Contentful {
      * Initialises the Contentful connection
      */
     async init() {
-        console.log('Starting Contentful Connection');
+        this.app.logger.info('Starting Contentful Connection');
 
         this.space = await this.client.getSpace(this.app.config.contentfulSpaceId);
 
@@ -49,7 +49,7 @@ class Contentful {
 
         this.currentAssets = await this.getAssets();
         
-        console.log('Started Contentful Connection');
+        this.app.logger.info('Started Contentful Connection');
     }
 
     /**
@@ -132,7 +132,7 @@ class Contentful {
                 })
             ]);
     
-            return resolve();
+            return resolve(asset.sys.id);
         })
     }
 

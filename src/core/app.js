@@ -1,21 +1,56 @@
 const config = require('config/')();
 
+const uuidv4 = require('uuid/v4');
+
 const FileManager = require('core/FileManager');
 const Contentful = require('core/Contentful');
 const Watermarker = require('core/Watermarker');
 
+const logger = require('core/logger');
+
 class App {
     constructor() {
+
+        /**
+         * The config for the application
+         * @type {object}
+         */
         this.config = config;
 
+        /**
+         * The contentful connection componet for the application
+         * @type {Contentful}
+         */
         this.contentful = new Contentful(this);
 
+        /**
+         * The file manager component for the application
+         * @type {FileManager}
+         */
         this.fileManager = new FileManager(this);
 
+        /**
+         * The watermarker component for the application
+         * @type {Watermarker}
+         */
         this.watermarker = new Watermarker(this);
 
-        //this.storage = storage;
+        /**
+         * The applications logger
+         * @type {object}
+         */
+        this.logger = logger;
 
+        /**
+         * UUID Generator
+         * @type {function}
+         */
+        this.genUUID = uuidv4;
+
+        /**
+         * Object containing file paths to currently uploading images
+         * @type {object}
+         */
         this.uploadingNewImage = {};
 
     }
@@ -24,7 +59,7 @@ class App {
      * Initialization of the application
      */
     async init() {
-        console.log('Starting Contentful Sync Application');
+        this.logger.info('Starting Contentful Sync Application');
 
         await this.contentful.init();
 
@@ -32,36 +67,38 @@ class App {
 
         const diskImagesList = this.fileManager.currentImageFileListDisk;
         for(let i=0; i<diskImagesList.length; i++) { //Check for new images
+            const file = diskImagesList[i];
             if(diskImagesList[i].contentfulImageId !== '') { //has id
-                const contentfulAsset = this.contentful.currentAssets.find(asset => asset.sys.id === diskImagesList[i].contentfulImageId);
-                const file = diskImagesList[i];
+                const contentfulAsset = this.contentful.currentAssets.find(asset => asset.sys.id === file.contentfulImageId);
                 const {name, description} = this.getNameDescriptionFromFileName(file.fileName);
                 if(contentfulAsset) {  //id exists in contentful
                     if(contentfulAsset.fields.title['en-US'] === name) continue; //name has not changed
-                    console.log(`Updating asset name at ${file.relativePath} with id: ${file.contentfulImageId}`);
+                    const actionId = this.genUUID();
+                    this.logger.info(`Updating asset name with id: ${file.contentfulImageId}`, {contentfulImageId: file.contentfulImageId, oldName: contentfulAsset.fields.title['en-US'], newName: name, fileName: file.fileName, actionId});
                     await this.contentful.updateAssetNameDescription({
                         name,
                         description,
                         contentfulImageId: file.contentfulImageId
                     });
-                    console.log(`Done, Updating asset name at ${file.relativePath} with id: ${file.contentfulImageId}`);
+                    this.logger.info(`Completed, Updating asset name with id: ${file.contentfulImageId}`, {contentfulImageId: file.contentfulImageId, oldName: contentfulAsset.fields.title['en-US'], newName: name, fileName: file.fileName, actionId});
                     continue;
                 }
             }
-            console.log(`Creating, watermarking and uploading new asset at ${file.relativePath}`);
-            await this.contentful.uploadWatermarkNewAsset({
+            const actionId = this.genUUID();
+            this.logger.info(`Creating, watermarking and uploading new asset with relative path: ${file.relativePath}`, {file, name, description, actionId});
+            const contentfulImageId = await this.contentful.uploadWatermarkNewAsset({
                 title: name,
                 description: description,
                 fileName: file.fileName,
                 relativePath: file.relativePath
             })
-            console.log(`Done, creating, watermarking and uploading new asset at ${file.relativePath}`);
+            this.logger.info(`Completed, Creating, watermarking and uploading new asset with relative path: ${file.relativePath}`, {file, name, description, actionId, contentfulImageId});
         }
 
         await this.fileManager._startWatchingFileChanges();
         this._startFileManagerListen();
 
-        console.log('Started Contentful Sync Application');
+        this.logger.info('Started Contentful Sync Application');
     }
 
     /**
@@ -93,32 +130,35 @@ class App {
     _startFileManagerListen() {
         this.fileManager.on('fileNew', async (image) => {
             this.uploadingNewImage[image.path] = true; //set currently uploading to true
-            console.log(`Creating, watermarking and uploading new asset at ${image.relativePath}`);
             const {name, description} = this.getNameDescriptionFromFileName(image.fileName);
-            await this.contentful.uploadWatermarkNewAsset({
+            const actionId = this.genUUID();
+            this.logger.info(`Creating, watermarking and uploading new asset with relative path: ${file.relativePath}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName}, name, description, actionId});
+            const contentfulImageId = await this.contentful.uploadWatermarkNewAsset({
                 title: name,
                 description: description,
                 fileName: image.fileName,
                 relativePath: image.relativePath
             })
             this.uploadingNewImage[image.path] = false; //set currently uploading to false
-            console.log(`Done, creating, watermarking and uploading new asset at ${image.relativePath}`);
+            this.logger.info(`Completed, Creating, watermarking and uploading new asset with relative path: ${file.relativePath}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName}, name, description, actionId, contentfulImageId});
         })
 
         this.fileManager.on('fileNameUpdate', async (image) => {
-            console.log('updating file name');
+            const actionId = this.genUUID();
             const {name, description} = this.getNameDescriptionFromFileName(image.fileName);
+            this.logger.info(`Updating image name and description with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, newName: name, description, actionId});
             await this.contentful.updateAssetNameDescription({
                 name,
                 description,
                 contentfulImageId: image._contentfulImageId
             })
-            console.log('done updating file name');
+            this.logger.info(`Completed, Updating image name and description with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, newName: name, description, actionId});
         })
 
         this.fileManager.on('fileContentUpdate', async (image) => {
             if(this.uploadingNewImage[image.path]) return;
-            console.log('updating image on asset');
+            const actionId = this.genUUID();
+            this.logger.info(`Uploading new image to existing asset with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, actionId});
             const watermarkedImageInfo = await this.watermarker.watermarkImage({
                 fileName: image.fileName,
                 path: image.path,
@@ -130,13 +170,14 @@ class App {
                 relativePath: watermarkedImageInfo.relativePath,
                 data: watermarkedImageInfo.watermarkedImageData
             });
-            console.log('done updating image on asset')
+            this.logger.info(`Completed, Uploading new image to existing asset with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, actionId});
         })
 
         this.fileManager.on('fileDelete', async (image) => {
-            console.log('deleteing asset');
+            const actionId = this.genUUID();
+            this.logger.info(`Deleting asset with id: ${image.contentfulImageId}`, {file: image, actionId});
             await this.contentful.deleteAsset(image.contentfulImageId);
-            console.log('done deleteing asset');
+            this.logger.info(`Completed, Deleting asset with id: ${image.contentfulImageId}`, {file: image, actionId});
         })
     }
 }

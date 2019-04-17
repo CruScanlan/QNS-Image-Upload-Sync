@@ -24,11 +24,11 @@ class FileManager extends EventEmitter{
      * Initialize the file manager
      */
     async init() {
-        console.log('Starting File Manager');
+        this.app.logger.info('Starting File Manager');
 
         await this.populateDiskImageFileList();
 
-        console.log('Started File Manager');
+        this.app.logger.info('Started File Manager');
     }
 
     /**
@@ -77,7 +77,7 @@ class FileManager extends EventEmitter{
                     }
                 }
             }).on('ready', () => {
-                console.log('Started watching for file changes');
+                this.app.logger.info('Started watching for file changes');
                 resolve();
             })
         })
@@ -88,7 +88,7 @@ class FileManager extends EventEmitter{
      */
     async populateDiskImageFileList() {
         this.currentImageFileListDisk = await this.getImageFileList(this.app.config.assetDirectory, '');
-        console.log(`Disk Image File List Populated With ${this.currentImageFileListDisk.length} Images`);
+        this.app.logger.info(`Disk Image File List Populated With ${this.currentImageFileListDisk.length} Images`, {currentImageFileListDisk: this.currentImageFileListDisk});
         return;
     }
 
