@@ -25,8 +25,8 @@ class Watermarker  {
         const baseImage = await Jimp.read(Buffer.from(baseImageData));
         const watermarkImage = await Jimp.read(path.join(__dirname, '../assets/Watermark.png'));
 
-        if(baseImage.bitmap.width >= baseImage.bitmap.height) watermarkImage.resize(0.387*baseImage.bitmap.width, Jimp.AUTO); //Landscape or square
-        else watermarkImage.resize(0.749*baseImage.bitmap.width, Jimp.AUTO);
+        if(baseImage.bitmap.width >= baseImage.bitmap.height) watermarkImage.resize(0.387*baseImage.bitmap.width, Jimp.AUTO); //Resize for square or landscape image
+        else watermarkImage.resize(0.749*baseImage.bitmap.width, Jimp.AUTO); //Resize for portrait image
 
         const newRelativePath = `/watermarked${imageInfo.relativePath.substring(0, imageInfo.relativePath.length-4)}-watermarked.jpg`;
         const newFileName = `${imageInfo.fileName.substring(0, imageInfo.fileName.length-4)}-watermarked.jpg`;

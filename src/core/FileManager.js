@@ -52,7 +52,7 @@ class FileManager extends EventEmitter{
 
                 const eventType = event === 'update' ? 'fileUpdate' : 'fileDelete';
                 let image;
-                if(await this.fileExists(imageInfo.path)) image = await Image.build(Object.assign({}, imageInfo));
+                if(await this.fileExists(imageInfo.path)) image = await Image.build(Object.assign({}, imageInfo)); //if file exists build image
     
                 if(image && image._contentfulImageId === '' && eventType === 'fileUpdate') { //has never been in contentful
                     this.currentImageFileListDisk.push({

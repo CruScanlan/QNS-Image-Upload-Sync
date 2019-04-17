@@ -69,8 +69,8 @@ class App {
      * @param {string} fileName 
      */
     getNameDescriptionFromFileName(fileName) {
-        const name = fileName.substring(fileName.startsWith('$') ? 1 : 0, fileName.length-4);
-        const descripStart = name.indexOf('-')+1;
+        const name = fileName.substring(fileName.startsWith('$') ? 1 : 0, fileName.length-4); //remove the $ and .jpg
+        const descripStart = name.indexOf('-')+1; //look for first -
 
         if(descripStart === -1) {
             return {
@@ -80,7 +80,7 @@ class App {
         }
         
         const descripEnd = name.indexOf('-', descripStart);
-        const description = name.substring(descripStart, descripEnd !== -1 ? descripEnd : name.length);
+        const description = name.substring(descripStart, descripEnd !== -1 ? descripEnd : name.length); //end description at second - or end of name
         return {
             name,
             description
@@ -92,7 +92,7 @@ class App {
      */
     _startFileManagerListen() {
         this.fileManager.on('fileNew', async (image) => {
-            this.uploadingNewImage[image.path] = true;
+            this.uploadingNewImage[image.path] = true; //set currently uploading to true
             console.log(`Creating, watermarking and uploading new asset at ${image.relativePath}`);
             const {name, description} = this.getNameDescriptionFromFileName(image.fileName);
             await this.contentful.uploadWatermarkNewAsset({
@@ -101,7 +101,7 @@ class App {
                 fileName: image.fileName,
                 relativePath: image.relativePath
             })
-            this.uploadingNewImage[image.path] = false;
+            this.uploadingNewImage[image.path] = false; //set currently uploading to false
             console.log(`Done, creating, watermarking and uploading new asset at ${image.relativePath}`);
         })
 

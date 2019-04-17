@@ -107,9 +107,9 @@ class Image {
      * @return {void}
      */
     async setContentfulImageId(id) {
-        const commentArr = [99,0,111,0,110,0,116,0,101,0,110,0,116,0,102,0,117,0,108,0,73,0,109,0,97,0,103,0,101,0,73,0,100,0,45,0];
+        const commentArr = [99,0,111,0,110,0,116,0,101,0,110,0,116,0,102,0,117,0,108,0,73,0,109,0,97,0,103,0,101,0,73,0,100,0,45,0]; //contentfulImageId- in UCS-2 format
         for(let i=0; i<id.length; i++) {
-            commentArr.push(id.charCodeAt(i), 0);
+            commentArr.push(id.charCodeAt(i), 0); //convert id to ucs-2 array
         }
         this._exif['0th']['40092'] = commentArr;
         this.contentfulImageId = this._getContentfulImageIdFromExif();
@@ -133,7 +133,7 @@ class Image {
     _getContentfulImageIdFromExif() {
         let commentArr = this._exif['0th']['40092'];
         if(!commentArr) return '';
-        commentArr = commentArr.filter(val => val !== 0); //remove null bytes
+        commentArr = commentArr.filter(val => val !== 0); //remove null bytes to convert to ascii
         const commentString = String.fromCharCode(...commentArr);
 
         if(commentString.startsWith('contentfulImageId-')) return commentString.substring(18, commentString.length);
