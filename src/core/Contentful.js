@@ -1,7 +1,7 @@
 const contentful = require('contentful-management');
 const path = require('path');
 const request = require('request');
-const Image = require('models/Image');
+const Image = require('core/Image');
 
 class Contentful {
     constructor(App) {
@@ -48,20 +48,27 @@ class Contentful {
         this.environment = await this.space.getEnvironment('master');
 
         this.currentAssets = await this.getAssets();
-
-        /* await this.uploadNewAsset({
-            title: 'ayy',
-            description: 'test description',
-            fileName: '$Acacia amblygona inflorescence, phyllodes, fruit, Curra SF July 2018.jpg',
-            relativePath: `/Acacia amblygona/$Acacia amblygona inflorescence, phyllodes, fruit, Curra SF July 2018.jpg`
-        }) */
-
+        
         console.log('Started Contentful Connection');
     }
 
     async getAssets() {
         const assets = await this.environment.getAssets();
         return assets.items;
+    }
+
+    async updateAssetNameDescription({name, description, contentfulImageId}) {
+        const asset = await this.environment.getAsset(contentfulImageId);
+        if(!asset) return;
+        asset.fields.title['en-US'] = name;
+        asset.fields.description['en-US'] = description;
+        await asset.update();
+    }
+
+    async deleteAsset(contentfulImageId) {
+        const asset = await this.environment.getAsset(contentfulImageId);
+        if(!asset) return;
+        await asset.delete();
     }
 
     /**
@@ -101,6 +108,8 @@ class Contentful {
                 fileName: watermarkedImageInfo.fileName,
                 data: watermarkedImageInfo.watermarkedImageData
             });
+
+            this.app.fileManager.currentImageFileListDisk.find(diskAsset => diskAsset.contentfulImageId === originalImage._contentfulImageId).contentfulImageId = asset.sys.id; //change the contentful image id in disk cache
 
             await Promise.all([
                 originalImage.setContentfulImageId(asset.sys.id),
@@ -154,6 +163,10 @@ class Contentful {
             try {
                 const upload = await this.uploadImageWatermarked(imageInfo);
                 const asset = await this.environment.getAsset(imageInfo.assetId);
+                asset.fields.file['en-US'].contentType = 'image/jpg';
+                asset.fields.file['en-US'].fileName = imageInfo.fileName;
+                delete asset.fields.file['en-US'].url;
+                delete asset.fields.file['en-US'].details;
                 asset.fields.file['en-US'].uploadFrom = {
                     sys: {
                       type: 'Link',

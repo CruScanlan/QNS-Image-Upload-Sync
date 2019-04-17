@@ -1,7 +1,7 @@
 const fs = require('fs');
 const watch = require('node-watch');
 const { EventEmitter } = require('events');
-const Image = require('models/Image');
+const Image = require('core/Image');
 
 class FileManager extends EventEmitter{
     constructor(App) {
@@ -20,7 +20,6 @@ class FileManager extends EventEmitter{
         console.log('Starting File Manager');
 
         await this.populateDiskImageFileList();
-        await this._startWatchingFileChanges();
 
         console.log('Started File Manager');
     }
@@ -33,29 +32,38 @@ class FileManager extends EventEmitter{
                 filter: name => name.endsWith('.jpg')
             }, async (event, file) => {
                 file = file.split('\\').join('/');
+                if(file.indexOf('-watermarked.jpg') !== -1) return;
     
                 const imageInfo = {
                     path: file,
                     relativePath: file.substring(this.app.config.assetDirectory.length, file.length),
                     fileName: file.substring(file.lastIndexOf('/')+1, file.length)
                 }
-                return;
-                const image = await Image.build(Object.assign({}, imageInfo));
+
                 const eventType = event === 'update' ? 'fileUpdate' : 'fileDelete';
+                let image;
+                if(await this.fileExists(imageInfo.path)) image = await Image.build(Object.assign({}, imageInfo));
     
-                if(image._contentfulImageId === '' && eventType === 'update') {
+                if(image && image._contentfulImageId === '' && eventType === 'fileUpdate') { //has never been in contentful
                     this.currentImageFileListDisk.push({
                         ...imageInfo,
-                        contentfulImageId: image._contentfulImageId
+                        contentfulImageId: image._contentfulImageId,
+                        imageHash: image._imageHash
                     });
-                    return this.emit(eventType, image);
-                }
-    
+                    return this.emit('fileNew', image);
+                }  
+
                 for(let i=0; i<this.currentImageFileListDisk.length; i++) {
-                    if(this.currentImageFileListDisk[i].contentfulImageId === image._contentfulImageId) {
-                        if(eventType === "fileUpdate") this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId});
-                        else this.currentImageFileListDisk.splice(i, 1);
-                        this.emit(eventType, image);
+                    if(!image && eventType === 'fileDelete' && this.currentImageFileListDisk[i].path === imageInfo.path) return this.emit('fileDelete', this.currentImageFileListDisk.splice(i, 1)[0]); //delete file
+                    
+                    if(eventType === "fileUpdate" && this.currentImageFileListDisk[i].contentfulImageId === image._contentfulImageId) { //already known file on disk
+                        if(this.currentImageFileListDisk[i].path !== image.path && await this.fileExists(this.currentImageFileListDisk[i].path)) return;
+                        if(this.currentImageFileListDisk[i].imageHash === image._imageHash) {
+                            this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId}); //update image info
+                            return this.emit('fileNameUpdate', image); //name change
+                        }
+                        this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId}); //update image info
+                        return this.emit('fileContentUpdate', image); //Content update
                     }
                 }
             }).on('ready', () => {
@@ -82,7 +90,7 @@ class FileManager extends EventEmitter{
 
         for(let i=0; i<data.length; i++) {
             const item = data[i];
-            if(images.length > 4) continue;
+            //if(images.length > 4) continue;
             if(item.indexOf('.') !== -1) {
                 if(item.endsWith('.jpg') && item.startsWith('$')) {
                     const imageInfo = {
@@ -93,7 +101,8 @@ class FileManager extends EventEmitter{
                     //Use object assign to copy variables and allow the image data to be garbage collected
                     const image = await Image.build(Object.assign({}, imageInfo));
                     images.push(Object.assign({}, imageInfo, {
-                        contentfulImageId: image._contentfulImageId
+                        contentfulImageId: image._contentfulImageId,
+                        imageHash: image._imageHash
                     }));
                 }
                 continue;
@@ -102,6 +111,14 @@ class FileManager extends EventEmitter{
             images.push(...await this.getImageFileList(`${searchPath}/${item}`, `${relativePath}/${item}`));
         }
         return images;
+    }
+
+    async fileExists(path) {
+        return new Promise((resolve) => {
+            fs.access(path, fs.constants.F_OK, (err) => {
+                resolve(!err);
+            })
+        })
     }
 
     async readDir(path) {

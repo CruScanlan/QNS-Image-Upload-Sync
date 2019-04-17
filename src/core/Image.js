@@ -1,4 +1,5 @@
 const piexif = require('piexifjs');
+const md5 =require('md5');
 const fs = require('fs');
 
 class Image {
@@ -44,6 +45,11 @@ class Image {
          * @type {string}
          */
         this._contentfulImageId = this._getContentfulImageIdFromExif();
+
+        /**
+         * A hash of the image excluding meta data
+         */
+        this._imageHash = this.createImageHash();
     }
 
     /**
@@ -82,6 +88,17 @@ class Image {
                 resolve();
             });
         });
+    }
+
+    /**
+     * Creates a hash of the image data excluding meta data
+     * @return {string}
+     */
+    createImageHash() {
+        const imageData = piexif.remove(this._data);
+        const hash = md5(imageData);
+        this._imageHash = hash;
+        return hash;
     }
 
     /**
