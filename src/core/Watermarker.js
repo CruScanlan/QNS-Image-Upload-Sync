@@ -12,6 +12,13 @@ class Watermarker  {
     }
 
 
+    /**
+     * Saves a watermark of an image
+     * @param {object} imageInfo
+     * @param {string} imageInfo.path - The path of the file
+     * @param {string} imageInfo.fileName - The file name of the image
+     * @param {string} imageInfo.relativePath - The path relative to the image directory for the image
+     */
     async watermarkImage(imageInfo) {
         const baseImageData = await this.readImage(imageInfo.path);
 
@@ -40,6 +47,10 @@ class Watermarker  {
         }
     }
 
+    /**
+     * Reads an image from disk
+     * @param {string} path 
+     */
     readImage(path) {
         return new Promise((resolve, reject) => {
             fs.readFile(path, (err, data) => {

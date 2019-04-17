@@ -20,6 +20,9 @@ class App {
 
     }
 
+    /**
+     * Initialization of the application
+     */
     async init() {
         console.log('Starting Contentful Sync Application');
 
@@ -61,6 +64,10 @@ class App {
         console.log('Started Contentful Sync Application');
     }
 
+    /**
+     * Parses a file name for name and description
+     * @param {string} fileName 
+     */
     getNameDescriptionFromFileName(fileName) {
         const name = fileName.substring(fileName.startsWith('$') ? 1 : 0, fileName.length-4);
         const descripStart = name.indexOf('-')+1;
@@ -80,6 +87,9 @@ class App {
         }
     }
 
+    /**
+     * Starts litsening to the file manager for file changes
+     */
     _startFileManagerListen() {
         this.fileManager.on('fileNew', async (image) => {
             this.uploadingNewImage[image.path] = true;

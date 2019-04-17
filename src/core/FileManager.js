@@ -12,10 +12,17 @@ class FileManager extends EventEmitter{
          */
         Object.defineProperty(this, 'app', {value: App});
 
+        /**
+         * The current list of files/images on the disk
+         * @type {array}
+         */
         this.currentImageFileListDisk = [];
 
     }
 
+    /**
+     * Initialize the file manager
+     */
     async init() {
         console.log('Starting File Manager');
 
@@ -24,6 +31,9 @@ class FileManager extends EventEmitter{
         console.log('Started File Manager');
     }
 
+    /**
+     * Starts watching the file system for changes parses them to the event emitter
+     */
     async _startWatchingFileChanges() {
         return new Promise((resolve) => {
             watch(this.app.config.assetDirectory, {
@@ -73,12 +83,20 @@ class FileManager extends EventEmitter{
         })
     }
 
+    /**
+     * Updates the disk file list with the current files on disk
+     */
     async populateDiskImageFileList() {
         this.currentImageFileListDisk = await this.getImageFileList(this.app.config.assetDirectory, '');
         console.log(`Disk Image File List Populated With ${this.currentImageFileListDisk.length} Images`);
         return;
     }
 
+    /**
+     * Gets a list of images in a particular folder and subfolders
+     * @param {string} searchPath 
+     * @param {string} relativePath 
+     */
     async getImageFileList(searchPath, relativePath) {
         let images = [];
         let data;
@@ -113,6 +131,10 @@ class FileManager extends EventEmitter{
         return images;
     }
 
+    /**
+     * Checks if a file exists on the file system
+     * @param {string} path 
+     */
     async fileExists(path) {
         return new Promise((resolve) => {
             fs.access(path, fs.constants.F_OK, (err) => {
@@ -121,6 +143,10 @@ class FileManager extends EventEmitter{
         })
     }
 
+    /**
+     * Reads the current files and directories in a directory
+     * @param {string} path 
+     */
     async readDir(path) {
         return new Promise((resolve, reject) => {
             fs.readdir(path, (err, data) => {

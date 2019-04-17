@@ -52,11 +52,17 @@ class Contentful {
         console.log('Started Contentful Connection');
     }
 
+    /**
+     * Gets assets from contentful
+     */
     async getAssets() {
         const assets = await this.environment.getAssets();
         return assets.items;
     }
 
+    /**
+     * Updates an assets name an description based off asset id
+     */
     async updateAssetNameDescription({name, description, contentfulImageId}) {
         const asset = await this.environment.getAsset(contentfulImageId);
         if(!asset) return;
@@ -65,6 +71,10 @@ class Contentful {
         await asset.update();
     }
 
+    /**
+     * Deletes an asset from contentful based off id
+     * @param {string} contentfulImageId
+     */
     async deleteAsset(contentfulImageId) {
         const asset = await this.environment.getAsset(contentfulImageId);
         if(!asset) return;
