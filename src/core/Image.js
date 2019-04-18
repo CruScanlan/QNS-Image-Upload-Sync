@@ -1,5 +1,5 @@
 const piexif = require('piexifjs');
-const md5 =require('md5');
+const crypto = require('crypto');
 const fs = require('fs');
 
 class Image {
@@ -96,7 +96,7 @@ class Image {
      */
     createImageHash() {
         const imageData = piexif.remove(this._data);
-        const hash = md5(imageData);
+        const hash = crypto.createHash('sha1').update(imageData).digest('hex');
         this._imageHash = hash;
         return hash;
     }
