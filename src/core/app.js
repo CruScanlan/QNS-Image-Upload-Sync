@@ -53,6 +53,9 @@ class App {
          */
         this.uploadingNewImage = {};
 
+        /**
+         * Object containing existing image ids that are uploading
+         */
         this.uploadingExistingImage = {};
 
     }
