@@ -53,6 +53,8 @@ class App {
          */
         this.uploadingNewImage = {};
 
+        this.uploadingExistingImage = {};
+
     }
 
     /**
@@ -132,7 +134,7 @@ class App {
             this.uploadingNewImage[image.path] = true; //set currently uploading to true
             const {name, description} = this.getNameDescriptionFromFileName(image.fileName);
             const actionId = this.genUUID();
-            this.logger.info(`Creating, watermarking and uploading new asset with relative path: ${file.relativePath}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName}, name, description, actionId});
+            this.logger.info(`Creating, watermarking and uploading new asset with relative path: ${image.relativePath}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName}, name, description, actionId});
             const contentfulImageId = await this.contentful.uploadWatermarkNewAsset({
                 title: name,
                 description: description,
@@ -140,7 +142,7 @@ class App {
                 relativePath: image.relativePath
             })
             this.uploadingNewImage[image.path] = false; //set currently uploading to false
-            this.logger.info(`Completed, Creating, watermarking and uploading new asset with relative path: ${file.relativePath}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName}, name, description, actionId, contentfulImageId});
+            this.logger.info(`Completed, Creating, watermarking and uploading new asset with relative path: ${image.relativePath}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName}, name, description, actionId, contentfulImageId});
         })
 
         this.fileManager.on('fileNameUpdate', async (image) => {
@@ -156,7 +158,8 @@ class App {
         })
 
         this.fileManager.on('fileContentUpdate', async (image) => {
-            if(this.uploadingNewImage[image.path]) return;
+            if(this.uploadingNewImage[image.path] || this.uploadingExistingImage[image._contentfulImageId]) return;
+            this.uploadingExistingImage[image._contentfulImageId] = true;
             const actionId = this.genUUID();
             this.logger.info(`Uploading new image to existing asset with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, actionId});
             const watermarkedImageInfo = await this.watermarker.watermarkImage({
@@ -170,13 +173,15 @@ class App {
                 relativePath: watermarkedImageInfo.relativePath,
                 data: watermarkedImageInfo.watermarkedImageData
             });
+            this.uploadingExistingImage[image._contentfulImageId] = false;
             this.logger.info(`Completed, Uploading new image to existing asset with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, actionId});
         })
 
         this.fileManager.on('fileDelete', async (image) => {
             const actionId = this.genUUID();
             this.logger.info(`Deleting asset with id: ${image.contentfulImageId}`, {file: image, actionId});
-            await this.contentful.deleteAsset(image.contentfulImageId);
+            const deleted = await this.contentful.deleteAsset(image.contentfulImageId);
+            if(!deleted) return this.logger.info(`Failed, Deleting asset with id: ${image.contentfulImageId}`, {file: image, actionId});
             this.logger.info(`Completed, Deleting asset with id: ${image.contentfulImageId}`, {file: image, actionId});
         })
     }

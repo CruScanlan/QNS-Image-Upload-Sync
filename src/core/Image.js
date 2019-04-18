@@ -96,7 +96,7 @@ class Image {
      */
     createImageHash() {
         const imageData = piexif.remove(this._data);
-        const hash = crypto.createHash('sha1').update(imageData).digest('hex');
+        const hash = crypto.createHash('md5').update(imageData).digest('hex');
         this._imageHash = hash;
         return hash;
     }

@@ -69,10 +69,10 @@ class FileManager extends EventEmitter{
                     if(eventType === "fileUpdate" && this.currentImageFileListDisk[i].contentfulImageId === image._contentfulImageId) { //already known file on disk
                         if(this.currentImageFileListDisk[i].path !== image.path && await this.fileExists(this.currentImageFileListDisk[i].path)) return;
                         if(this.currentImageFileListDisk[i].imageHash === image._imageHash) {
-                            this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId}); //update image info
+                            this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId, imageHash: image._imageHash}); //update image info
                             return this.emit('fileNameUpdate', image); //name change
                         }
-                        this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId}); //update image info
+                        this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId, imageHash: image._imageHash}); //update image info
                         return this.emit('fileContentUpdate', image); //Content update
                     }
                 }

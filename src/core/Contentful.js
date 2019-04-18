@@ -57,18 +57,29 @@ class Contentful {
      */
     async getAssets() {
         const assets = await this.environment.getAssets();
+        this.currentAssets = assets.items;
         return assets.items;
+    }
+
+    /**
+     * Gets an asset from the current list of assets
+     * @param {string} id 
+     */
+    async getAsset(id) {
+        await this.getAssets();
+        return this.currentAssets.find(asset => asset.sys.id === id);
     }
 
     /**
      * Updates an assets name an description based off asset id
      */
     async updateAssetNameDescription({name, description, contentfulImageId}) {
-        const asset = await this.environment.getAsset(contentfulImageId);
+        const asset = await this.getAsset(contentfulImageId);
         if(!asset) return;
         asset.fields.title['en-US'] = name;
         asset.fields.description['en-US'] = description;
         await asset.update();
+        await this.publishImage(asset.sys.id);
     }
 
     /**
@@ -76,9 +87,10 @@ class Contentful {
      * @param {string} contentfulImageId
      */
     async deleteAsset(contentfulImageId) {
-        const asset = await this.environment.getAsset(contentfulImageId);
-        if(!asset) return;
+        const asset = await this.getAsset(contentfulImageId);
+        if(!asset) return false;
         await asset.delete();
+        return true;
     }
 
     /**
@@ -172,7 +184,7 @@ class Contentful {
         return new Promise(async (resolve, reject) => {
             try {
                 const upload = await this.uploadImageWatermarked(imageInfo);
-                const asset = await this.environment.getAsset(imageInfo.assetId);
+                const asset = await this.getAsset(imageInfo.assetId);
                 asset.fields.file['en-US'].contentType = 'image/jpg';
                 asset.fields.file['en-US'].fileName = imageInfo.fileName;
                 delete asset.fields.file['en-US'].url;
@@ -186,6 +198,7 @@ class Contentful {
                 }
                 await asset.update();
                 await asset.processForLocale('en-US', { processingCheckWait: 2000});
+                await this.publishImage(asset.sys.id);
             } catch(e) {
                 return reject(e);
             }
@@ -213,6 +226,27 @@ class Contentful {
                 if(err) return reject(err);
                 return resolve(JSON.parse(body));
             });
+        })
+    }
+
+    /**
+     * Publishes an image in contentful
+     * @param {string} assetId
+     */
+    async publishImage(assetId) {
+        return new Promise(async (resolve, reject) => {
+            while(!(await this.getAsset(assetId)).fields.file["en-US"].url) {} //wait until image is processed
+            const version = (await this.getAsset(assetId)).sys.version;
+            request.put({
+                url: ` https://api.contentful.com/spaces/${this.app.config.contentfulSpaceId}/environments/master/assets/${assetId}/published`,
+                headers: {
+                    "Authorization": `Bearer ${this.app.config.contentfulAccessToken}`,
+                    "X-Contentful-Version": version
+                }
+            }, (err, resp, body) => {
+                if(err) return reject(err);
+                return resolve(JSON.parse(body));
+            })
         })
     }
 }
