@@ -68,9 +68,9 @@ class App {
         const diskImagesList = this.fileManager.currentImageFileListDisk;
         for(let i=0; i<diskImagesList.length; i++) { //Check for new images
             const file = diskImagesList[i];
+            const {name, description} = this.getNameDescriptionFromFileName(file.fileName);
             if(diskImagesList[i].contentfulImageId !== '') { //has id
                 const contentfulAsset = this.contentful.currentAssets.find(asset => asset.sys.id === file.contentfulImageId);
-                const {name, description} = this.getNameDescriptionFromFileName(file.fileName);
                 if(contentfulAsset) {  //id exists in contentful
                     if(contentfulAsset.fields.title['en-US'] === name) continue; //name has not changed
                     const actionId = this.genUUID();
