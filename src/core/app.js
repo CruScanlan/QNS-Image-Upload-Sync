@@ -111,7 +111,7 @@ class App {
      * @param {string} fileName 
      */
     getNameDescriptionFromFileName(fileName) {
-        const name = fileName.substring(fileName.startsWith('$') ? 1 : 0, fileName.length-4); //remove the $ and .jpg
+        const name = fileName.substring(filename.startsWith('$') ? 1 : 0, fileName.length-4); //remove the $ and .jpg
         const descripStart = name.indexOf('-')+1; //look for first -
 
         if(descripStart === -1) {
@@ -163,6 +163,7 @@ class App {
         this.fileManager.on('fileContentUpdate', async (image) => {
             if(this.uploadingNewImage[image.path] || this.uploadingExistingImage[image._contentfulImageId]) return;
             this.uploadingExistingImage[image._contentfulImageId] = true;
+            const {name} = this.getNameDescriptionFromFileName(image.fileName);
             const actionId = this.genUUID();
             this.logger.info(`Uploading new image to existing asset with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, actionId});
             const watermarkedImageInfo = await this.watermarker.watermarkImage({
@@ -171,6 +172,7 @@ class App {
                 relativePath: image.relativePath
             });
             await this.contentful.uploadAssetImage({
+                title: name,
                 fileName: watermarkedImageInfo.fileName,
                 assetId: image._contentfulImageId,
                 relativePath: watermarkedImageInfo.relativePath,

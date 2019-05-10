@@ -18,6 +18,7 @@ class FileManager extends EventEmitter{
          */
         this.currentImageFileListDisk = [];
 
+        this._fileChangeHandler = this._fileChangeHandler.bind(this);
     }
 
     /**
@@ -25,6 +26,7 @@ class FileManager extends EventEmitter{
      */
     async init() {
         this.app.logger.info('Starting File Manager');
+
 
         await this.populateDiskImageFileList();
 
@@ -40,47 +42,53 @@ class FileManager extends EventEmitter{
                 persistent: true, 
                 recursive: true,
                 filter: name => name.endsWith('.jpg')
-            }, async (event, file) => {
-                file = file.split('\\').join('/');
-                if(file.indexOf('-watermarked.jpg') !== -1) return;
-    
-                const imageInfo = {
-                    path: file,
-                    relativePath: file.substring(this.app.config.assetDirectory.length, file.length),
-                    fileName: file.substring(file.lastIndexOf('/')+1, file.length)
-                }
-
-                const eventType = event === 'update' ? 'fileUpdate' : 'fileDelete';
-                let image;
-                if(await this.fileExists(imageInfo.path)) image = await Image.build(Object.assign({}, imageInfo)); //if file exists build image
-    
-                if(image && image._contentfulImageId === '' && eventType === 'fileUpdate') { //has never been in contentful
-                    this.currentImageFileListDisk.push({
-                        ...imageInfo,
-                        contentfulImageId: image._contentfulImageId,
-                        imageHash: image._imageHash
-                    });
-                    return this.emit('fileNew', image);
-                }  
-
-                for(let i=0; i<this.currentImageFileListDisk.length; i++) {
-                    if(!image && eventType === 'fileDelete' && this.currentImageFileListDisk[i].path === imageInfo.path) return this.emit('fileDelete', this.currentImageFileListDisk.splice(i, 1)[0]); //delete file
-                    
-                    if(eventType === "fileUpdate" && this.currentImageFileListDisk[i].contentfulImageId === image._contentfulImageId) { //already known file on disk
-                        if(this.currentImageFileListDisk[i].path !== image.path && await this.fileExists(this.currentImageFileListDisk[i].path)) return;
-                        if(this.currentImageFileListDisk[i].imageHash === image._imageHash) {
-                            this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId, imageHash: image._imageHash}); //update image info
-                            return this.emit('fileNameUpdate', image); //name change
-                        }
-                        this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId, imageHash: image._imageHash}); //update image info
-                        return this.emit('fileContentUpdate', image); //Content update
-                    }
-                }
-            }).on('ready', () => {
+            }, this._fileChangeHandler).on('ready', () => {
                 this.app.logger.info('Started watching for file changes');
                 resolve();
             })
         })
+    }
+
+    async _fileChangeHandler(event, file) {
+        file = file.split('\\').join('/');
+        if(file.indexOf('-watermarked.jpg') !== -1) return;
+
+        const imageInfo = {
+            path: file,
+            relativePath: file.substring(this.app.config.assetDirectory.length, file.length),
+            fileName: file.substring(file.lastIndexOf('/')+1, file.length)
+        }
+
+        const eventType = event === 'update' ? 'fileUpdate' : 'fileDelete';
+        let image;
+        if(await this.fileExists(imageInfo.path)) image = await Image.build(Object.assign({}, imageInfo)); //if file exists build image
+
+        if(image && image._contentfulImageId === '' && eventType === 'fileUpdate') { //has never been in contentful
+            this.currentImageFileListDisk.push({
+                ...imageInfo,
+                contentfulImageId: image._contentfulImageId,
+                imageHash: image._imageHash
+            });
+            return this.emit('fileNew', image);
+        }  
+
+        for(let i=0; i<this.currentImageFileListDisk.length; i++) {
+            if(!image && eventType === 'fileDelete' && this.currentImageFileListDisk[i].path === imageInfo.path) return this.emit('fileDelete', this.currentImageFileListDisk.splice(i, 1)[0]); //delete file
+            
+            if(eventType === "fileUpdate" && this.currentImageFileListDisk[i].contentfulImageId === image._contentfulImageId) { //already known file on disk
+                if(this.currentImageFileListDisk[i].path !== image.path && await this.fileExists(this.currentImageFileListDisk[i].path)) return;
+
+                if(this.currentImageFileListDisk[i].imageHash === image._imageHash) { //image content same, same hash
+                    if(this.currentImageFileListDisk[i].fileName.substring(1, this.currentImageFileListDisk[i].fileName.length) === imageInfo.fileName) return this.emit('fileDelete', this.currentImageFileListDisk.splice(i, 1)[0]); //delete file, $ removed
+
+                    this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId, imageHash: image._imageHash}); //update image info
+                    return this.emit('fileNameUpdate', image); //name change
+                }
+
+                this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId, imageHash: image._imageHash}); //update image info
+                return this.emit('fileContentUpdate', image); //Content update
+            }
+        }
     }
 
     /**

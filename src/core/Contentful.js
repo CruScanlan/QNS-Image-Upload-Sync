@@ -56,8 +56,14 @@ class Contentful {
      * Gets assets from contentful
      */
     async getAssets() {
-        const assets = await this.environment.getAssets();
-        this.currentAssets = assets.items;
+        const assets = await this.environment.getAssets({limit: 1000});
+        const items = assets.items;
+        if(assets.total > assets.limit) {
+            for(let i=1; i<Math.floor(assets.total/assets.limit)+1; i++) {
+                items.push(...(await this.environment.getAssets({limit: assets.limit, skip: assets.limit*i})).items)
+            }
+        }
+        this.currentAssets = items;
         return assets.items;
     }
 
@@ -89,6 +95,7 @@ class Contentful {
     async deleteAsset(contentfulImageId) {
         const asset = await this.getAsset(contentfulImageId);
         if(!asset) return false;
+        await asset.unpublish();
         await asset.delete();
         return true;
     }
@@ -97,6 +104,7 @@ class Contentful {
      * Create, upload and watermark a new asset
      * @param {object} assetInfo 
      * @param {string} assetInfo.title - The title for the contentful image
+     * @param {string} assetInfo.description - The description of the contentful image
      * @param {string} assetInfo.fileName - The file name of the image
      * @param {string} assetInfo.relativePath - The path relative to the image directory for the image
      */
@@ -107,8 +115,7 @@ class Contentful {
             const [asset, watermarkedImageInfo] = await Promise.all([
                 this.createAsset({
                     title: assetInfo.title,
-                    description: assetInfo.description,
-                    fileName: assetInfo.fileName
+                    description: assetInfo.description
                 }),
                 this.app.watermarker.watermarkImage({
                     fileName: assetInfo.fileName,
@@ -137,7 +144,7 @@ class Contentful {
                 originalImage.setContentfulImageId(asset.sys.id),
                 watermarkedImage.setContentfulImageId(asset.sys.id),
                 this.uploadAssetImage({
-                    fileName: watermarkedImageInfo.fileName,
+                    title: assetInfo.title,
                     assetId: asset.sys.id,
                     relativePath: watermarkedImageInfo.relativePath,
                     data: watermarkedImageInfo.watermarkedImageData
@@ -166,7 +173,7 @@ class Contentful {
               file: {
                 'en-US': {
                   contentType: 'image/jpg',
-                  fileName: assetInfo.fileName
+                  fileName: `${assetInfo.title.substring(0, assetInfo.title.indexOf('-'))}.jpg`
                 }
               }
             }
@@ -176,6 +183,7 @@ class Contentful {
     /**
      * Uploads an image to an existing asset file in contentful
      * @param {object} imageInfo
+     * @param {string} imageInfo.title - The title of the asset in contentful
      * @param {string} imageInfo.fileName - The file name of the image
      * @param {string} imageInfo.assetId - The id of the asset the image is for
      * @param {string} imageInfo.relativePath - The path relative to the image directory for the image
@@ -186,7 +194,7 @@ class Contentful {
                 const upload = await this.uploadImageWatermarked(imageInfo);
                 const asset = await this.getAsset(imageInfo.assetId);
                 asset.fields.file['en-US'].contentType = 'image/jpg';
-                asset.fields.file['en-US'].fileName = imageInfo.fileName;
+                asset.fields.file['en-US'].fileName = `${imageInfo.title.substring(0, imageInfo.title.indexOf('-'))}-${imageInfo.assetId}.jpg`;
                 delete asset.fields.file['en-US'].url;
                 delete asset.fields.file['en-US'].details;
                 asset.fields.file['en-US'].uploadFrom = {
@@ -208,6 +216,7 @@ class Contentful {
 
     /**
      * Uploads a watermarked image to contentful
+     * @param {object} imageInfo
      * @param {string} imageInfo.fileName - The file name of the image
      * @param {string} imageInfo.assetId - The id of the asset the image is for
      * @param {string} imageInfo.relativePath - The path relative to the image directory for the image
