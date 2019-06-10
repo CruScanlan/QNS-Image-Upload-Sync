@@ -51,7 +51,7 @@ class FileManager extends EventEmitter{
 
     async _fileChangeHandler(event, file) {
         file = file.split('\\').join('/');
-        if(file.indexOf('-watermarked.jpg') !== -1) return;
+        if(file.endsWith('-watermarked.jpg')) return;
 
         const imageInfo = {
             path: file,
@@ -60,10 +60,11 @@ class FileManager extends EventEmitter{
         }
 
         const eventType = event === 'update' ? 'fileUpdate' : 'fileDelete';
+        //console.log(file, eventType)
         let image;
         if(await this.fileExists(imageInfo.path)) image = await Image.build(Object.assign({}, imageInfo)); //if file exists build image
 
-        if(image && image._contentfulImageId === '' && eventType === 'fileUpdate') { //has never been in contentful
+        if(image && imageInfo.fileName.startsWith('$') && image._contentfulImageId === '' && eventType === 'fileUpdate') {
             this.currentImageFileListDisk.push({
                 ...imageInfo,
                 contentfulImageId: image._contentfulImageId,
@@ -88,6 +89,15 @@ class FileManager extends EventEmitter{
                 this.currentImageFileListDisk.splice(i, 1, {...imageInfo, contentfulImageId: image._contentfulImageId, imageHash: image._imageHash}); //update image info
                 return this.emit('fileContentUpdate', image); //Content update
             }
+        }
+
+        if(image && imageInfo.fileName.startsWith('$') && !(await this.app.contentful.getAsset(image._contentfulImageId)) && eventType === 'fileUpdate') { //Is new file but has been in contentful
+            this.currentImageFileListDisk.push({
+                ...imageInfo,
+                contentfulImageId: image._contentfulImageId,
+                imageHash: image._imageHash
+            });
+            return this.emit('fileNew', image);
         }
     }
 

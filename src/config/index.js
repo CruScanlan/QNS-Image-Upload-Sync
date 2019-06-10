@@ -6,7 +6,7 @@ const prodConfig = require('./prod-config');
 const testConfig = require('./test-config');
 
 module.exports = function(){
-    switch(process.env.NODE_ENV){
+    switch(process.env.NODE_ENV || 'production'){
         case 'development':
             return {...baseConfig, ...devConfig};
         case 'production':

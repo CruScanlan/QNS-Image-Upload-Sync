@@ -71,6 +71,7 @@ class App {
         await this.fileManager.init();
 
         const diskImagesList = this.fileManager.currentImageFileListDisk;
+        //console.log(diskImagesList)
         for(let i=0; i<diskImagesList.length; i++) { //Check for new images
             const file = diskImagesList[i];
             const {name, description} = this.getNameDescriptionFromFileName(file.fileName);
@@ -89,6 +90,7 @@ class App {
                     continue;
                 }
             }
+            if(!file.fileName.startsWith('$')) continue;
             const actionId = this.genUUID();
             this.logger.info(`Creating, watermarking and uploading new asset with relative path: ${file.relativePath}`, {file, name, description, actionId});
             const contentfulImageId = await this.contentful.uploadWatermarkNewAsset({
@@ -111,7 +113,7 @@ class App {
      * @param {string} fileName 
      */
     getNameDescriptionFromFileName(fileName) {
-        const name = fileName.substring(filename.startsWith('$') ? 1 : 0, fileName.length-4); //remove the $ and .jpg
+        const name = fileName.substring(fileName.startsWith('$') ? 1 : 0, fileName.length-4); //remove the $ and .jpg
         const descripStart = name.indexOf('-')+1; //look for first -
 
         if(descripStart === -1) {
@@ -149,6 +151,7 @@ class App {
         })
 
         this.fileManager.on('fileNameUpdate', async (image) => {
+            if(this.uploadingNewImage[image.path]) return;
             const actionId = this.genUUID();
             const {name, description} = this.getNameDescriptionFromFileName(image.fileName);
             this.logger.info(`Updating image name and description with id: ${image._contentfulImageId}`, {file: {path: image.path, relativePath: image.relativePath, fileName: image.fileName, contentfulImageId: image._contentfulImageId}, newName: name, description, actionId});
