@@ -40,6 +40,12 @@ class Image {
          */
         this._exif = piexif.load(this._data);
 
+        try {
+            piexif.dump(this._exif);
+        } catch(e) {
+            throw new Error(`There was an error with piexif.dump | ${e}`)
+        }
+
         /**
          * The contentful image id for an image
          * @type {string}
